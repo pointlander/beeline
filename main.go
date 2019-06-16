@@ -8,6 +8,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"strconv"
 
@@ -53,6 +54,8 @@ var labelMap = map[string]int{
 }
 
 func main() {
+	rand.Seed(1)
+
 	input, err := os.Open("data/iris.csv")
 	if err != nil {
 		panic(err)
@@ -94,7 +97,7 @@ func main() {
 	}
 	fmt.Println(data)
 
-	network := NewNetwork(OptionNone(4), OptionSigmoid(5), OptionSoftmax(3))
+	network := NewNetwork(OptionNone(4), OptionSigmoid(4), OptionSoftmax(3), OptionShared(true))
 	iterations := network.Train(data, true, 10, .1, .9, 1)
 	fmt.Println(iterations)
 

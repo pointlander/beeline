@@ -12,6 +12,7 @@ import (
 const Debug = false
 
 var (
+	Zero = Dual{Val: 0}
 	Half = Dual{Val: 0.5}
 	One  = Dual{Val: 1.0}
 )

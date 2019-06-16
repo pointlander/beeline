@@ -11,6 +11,7 @@ import (
 )
 
 type Weight struct {
+	Tag             int
 	Weight          Dual
 	Delta, Gradient float32
 }
@@ -20,10 +21,17 @@ type Meta struct {
 	Transform Transform
 }
 
+type Share struct {
+	Sum   float32
+	Count int
+}
+
 type Network struct {
+	Tags   int
 	Meta   []Meta
 	Layers [][]Weight
 	Biases [][]Weight
+	Shares map[int]Share
 }
 
 func random32(a, b float32) float32 {
@@ -61,6 +69,22 @@ func OptionSoftmax(size int) Option {
 	}
 }
 
+func OptionShared(shared bool) Option {
+	if shared {
+		return func(network *Network) error {
+			network.Shares = make(map[int]Share)
+			network.Shares[network.Tags] = Share{}
+			network.Tags++
+			network.Shares[network.Tags] = Share{}
+			network.Tags++
+			return nil
+		}
+	}
+	return func(network *Network) error {
+		return nil
+	}
+}
+
 func NewNetwork(options ...Option) Network {
 	network := Network{}
 	for _, option := range options {
@@ -71,12 +95,25 @@ func NewNetwork(options ...Option) Network {
 	}
 	meta := network.Meta
 
+	var shares []float32
+	if network.Shares != nil {
+		shares = make([]float32, network.Tags)
+		shares[0] = 1
+		shares[1] = -1
+	}
+
 	last, layers, biases := meta[0].Size, make([][]Weight, len(meta)-1), make([][]Weight, len(meta)-1)
 	for i, m := range meta[1:] {
 		size := m.Size
 		layers[i] = make([]Weight, last*size)
 		for j := range layers[i] {
-			layers[i][j].Weight.Val = random32(-1, 1) / float32(math.Sqrt(float64(last)))
+			if network.Shares != nil {
+				tag := rand.Intn(network.Tags)
+				layers[i][j].Tag = tag
+				layers[i][j].Weight.Val = shares[tag]
+			} else {
+				layers[i][j].Weight.Val = random32(-1, 1) / float32(math.Sqrt(float64(last)))
+			}
 			if Debug {
 				layers[i][j].Weight.Expr = &Expr{
 					Name: fmt.Sprintf("w%d_%d", i, j),
@@ -87,7 +124,13 @@ func NewNetwork(options ...Option) Network {
 		}
 		biases[i] = make([]Weight, size)
 		for j := range biases[i] {
-			biases[i][j].Weight.Val = random32(-1, 1) / float32(math.Sqrt(float64(last)))
+			if network.Shares != nil {
+				tag := rand.Intn(network.Tags)
+				biases[i][j].Tag = tag
+				biases[i][j].Weight.Val = shares[tag]
+			} else {
+				biases[i][j].Weight.Val = random32(-1, 1) / float32(math.Sqrt(float64(last)))
+			}
 			if Debug {
 				biases[i][j].Weight.Expr = &Expr{
 					Name: fmt.Sprintf("b%d_%d", i, j),
@@ -263,6 +306,43 @@ func (n *Network) Train(data []TrainingData, verbose bool, target float64, alpha
 				}
 			}
 			norm = float32(math.Sqrt(float64(norm)))
+			if shares := n.Shares; shares != nil {
+				for j := range shares {
+					shares[j] = Share{}
+				}
+				for _, layer := range n.Layers {
+					for j := range layer {
+						tag := layer[j].Tag
+						value, share := layer[j].Gradient, shares[tag]
+						share.Sum += value
+						share.Count++
+						shares[tag] = share
+					}
+				}
+				for _, bias := range n.Biases {
+					for j := range bias {
+						tag := bias[j].Tag
+						value, share := bias[j].Gradient, shares[tag]
+						share.Sum += value
+						share.Count++
+						shares[tag] = share
+					}
+				}
+				for _, layer := range n.Layers {
+					for j := range layer {
+						tag := layer[j].Tag
+						share := shares[tag]
+						layer[j].Gradient = share.Sum / float32(share.Count)
+					}
+				}
+				for _, bias := range n.Biases {
+					for j := range bias {
+						tag := bias[j].Tag
+						share := shares[tag]
+						bias[j].Gradient = share.Sum / float32(share.Count)
+					}
+				}
+			}
 			if norm > threshold {
 				scaling := threshold / norm
 				for _, layer := range n.Layers {
@@ -293,7 +373,42 @@ func (n *Network) Train(data []TrainingData, verbose bool, target float64, alpha
 			}
 		}
 		iterations++
-		if verbose {
+		if shares, tags := n.Shares, n.Tags; shares != nil {
+			next := make(map[int]int, tags)
+			for i := 0; i < tags; i++ {
+				share := shares[i]
+				if share.Count < 2 {
+					continue
+				}
+				next[i] = rand.Intn(n.Tags)
+				n.Tags++
+			}
+			for _, layer := range n.Layers {
+				for j := range layer {
+					tag, ok := next[layer[j].Tag]
+					if !ok {
+						continue
+					}
+					if rand.Intn(2) == 0 {
+						layer[j].Tag = tag
+					}
+				}
+			}
+			for _, bias := range n.Biases {
+				for j := range bias {
+					tag, ok := next[bias[j].Tag]
+					if !ok {
+						continue
+					}
+					if rand.Intn(2) == 0 {
+						bias[j].Tag = tag
+					}
+				}
+			}
+			if verbose {
+				fmt.Println(iterations, total, tags)
+			}
+		} else if verbose {
 			fmt.Println(iterations, total)
 		}
 		if total < target {
