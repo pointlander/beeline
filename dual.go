@@ -256,3 +256,23 @@ func Pow(d Dual, p float32) Dual {
 	}
 	return value
 }
+
+type Transform func(d []Dual)
+
+func SigmoidTransform(d []Dual) {
+	for i, value := range d {
+		d[i] = Sigmoid(value)
+	}
+}
+
+func SoftmaxTransform(d []Dual) {
+	var sum Dual
+	for i, value := range d {
+		value = Exp(value)
+		sum = Add(sum, value)
+		d[i] = value
+	}
+	for i, value := range d {
+		d[i] = Div(value, sum)
+	}
+}

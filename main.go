@@ -41,10 +41,9 @@ func mnist() {
 	}
 	trainData := load(train)
 
-	network := NewNetwork(Pixels, Pixels/4, 10)
+	network := NewNetwork(OptionSigmoid(Pixels), OptionSigmoid(Pixels/4), OptionSigmoid(10))
 	iterations := network.Train(trainData, true, .001, .4, .6, 1)
 	fmt.Println(iterations)
-
 }
 
 var labelMap = map[string]int{
@@ -96,8 +95,8 @@ func main() {
 	}
 	fmt.Println(data)
 
-	network := NewNetwork(4, 5, 3)
-	iterations := network.Train(data, true, 1, .3, .7, 1)
+	network := NewNetwork(OptionSigmoid(4), OptionSigmoid(5), OptionSigmoid(3))
+	iterations := network.Train(data, true, 3, .3, .7, 1)
 	fmt.Println(iterations)
 
 	state, fails := network.NewNetState(), 0

@@ -15,8 +15,13 @@ type Weight struct {
 	Delta, Gradient float32
 }
 
+type Meta struct {
+	Size      int
+	Transform Transform
+}
+
 type Network struct {
-	Sizes  []int
+	Meta   []Meta
 	Layers [][]Weight
 	Biases [][]Weight
 }
@@ -25,9 +30,41 @@ func random32(a, b float32) float32 {
 	return (b-a)*rand.Float32() + a
 }
 
-func NewNetwork(sizes ...int) Network {
-	last, layers, biases := sizes[0], make([][]Weight, len(sizes)-1), make([][]Weight, len(sizes)-1)
-	for i, size := range sizes[1:] {
+type Option func(*Network) error
+
+func OptionSigmoid(size int) Option {
+	return func(network *Network) error {
+		network.Meta = append(network.Meta, Meta{
+			Size:      size,
+			Transform: SigmoidTransform,
+		})
+		return nil
+	}
+}
+
+func OptionSoftmax(size int) Option {
+	return func(network *Network) error {
+		network.Meta = append(network.Meta, Meta{
+			Size:      size,
+			Transform: SoftmaxTransform,
+		})
+		return nil
+	}
+}
+
+func NewNetwork(options ...Option) Network {
+	network := Network{}
+	for _, option := range options {
+		err := option(&network)
+		if err != nil {
+			panic(err)
+		}
+	}
+	meta := network.Meta
+
+	last, layers, biases := meta[0].Size, make([][]Weight, len(meta)-1), make([][]Weight, len(meta)-1)
+	for i, m := range meta[1:] {
+		size := m.Size
 		layers[i] = make([]Weight, last*size)
 		for j := range layers[i] {
 			layers[i][j].Weight.Val = random32(-1, 1) / float32(math.Sqrt(float64(last)))
@@ -52,11 +89,9 @@ func NewNetwork(sizes ...int) Network {
 		}
 		last = size
 	}
-	return Network{
-		Sizes:  sizes,
-		Layers: layers,
-		Biases: biases,
-	}
+	network.Layers = layers
+	network.Biases = biases
+	return network
 }
 
 type NetState struct {
@@ -65,9 +100,9 @@ type NetState struct {
 }
 
 func (n *Network) NewNetState() NetState {
-	state := make([][]Dual, len(n.Sizes))
-	for i, size := range n.Sizes {
-		state[i] = make([]Dual, size)
+	state := make([][]Dual, len(n.Meta))
+	for i, m := range n.Meta {
+		state[i] = make([]Dual, m.Size)
 	}
 	if Debug {
 		for i := range state[0] {
@@ -85,17 +120,18 @@ func (n *Network) NewNetState() NetState {
 }
 
 func (n *NetState) Inference() {
+	meta := n.Meta[1:]
 	for i, layer := range n.Layers {
 		w := 0
-		for j := 0; j < n.Sizes[i+1]; j++ {
+		for j := 0; j < meta[i].Size; j++ {
 			var sum Dual
 			for _, activation := range n.State[i] {
 				sum = Add(sum, Mul(activation, layer[w].Weight))
-				sum = Add(sum, n.Biases[i][j].Weight)
 				w++
 			}
-			n.State[i+1][j] = Sigmoid(sum)
+			n.State[i+1][j] = Add(sum, n.Biases[i][j].Weight)
 		}
+		meta[i].Transform(n.State[i+1])
 	}
 }
 
@@ -170,18 +206,18 @@ func (n *Network) Train(data []TrainingData, verbose bool, target float64, alpha
 			for _, layer := range n.Layers {
 				for j := range layer {
 					value := layer[j].Gradient
-					if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+					/*if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
 						layer[j].Gradient, value = 2*threshold, 2*threshold
-					}
+					}*/
 					norm += value * value
 				}
 			}
 			for _, bias := range n.Biases {
 				for j := range bias {
 					value := bias[j].Gradient
-					if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+					/*if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
 						bias[j].Gradient, value = 2*threshold, 2*threshold
-					}
+					}*/
 					norm += value * value
 				}
 			}

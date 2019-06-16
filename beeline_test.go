@@ -20,7 +20,7 @@ func TestDual(t *testing.T) {
 
 func TestNetwork(t *testing.T) {
 	rand.Seed(1)
-	network := NewNetwork(2, 2, 1)
+	network := NewNetwork(OptionSigmoid(2), OptionSigmoid(2), OptionSigmoid(1))
 	data := []TrainingData{
 		{
 			[]float32{0, 0}, []float32{0},
@@ -53,7 +53,7 @@ func TestNetwork(t *testing.T) {
 
 func TestNetworkCCNOT(t *testing.T) {
 	rand.Seed(1)
-	network := NewNetwork(3, 3, 1)
+	network := NewNetwork(OptionSigmoid(3), OptionSigmoid(3), OptionSigmoid(1))
 	data := []TrainingData{
 		{
 			[]float32{0, 0, 0}, []float32{0},
