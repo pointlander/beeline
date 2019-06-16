@@ -41,7 +41,7 @@ func mnist() {
 	}
 	trainData := load(train)
 
-	network := NewNetwork(OptionSigmoid(Pixels), OptionSigmoid(Pixels/4), OptionSigmoid(10))
+	network := NewNetwork(OptionNone(Pixels), OptionSigmoid(Pixels/4), OptionSigmoid(10))
 	iterations := network.Train(trainData, true, .001, .4, .6, 1)
 	fmt.Println(iterations)
 }
@@ -62,7 +62,7 @@ func main() {
 	data := make([]TrainingData, 0, 256)
 	line, err := reader.Read()
 	for err == nil {
-		inputs, outputs := make([]float32, 4), make([]float32, 3)
+		inputs := make([]float32, 4)
 		for i := range inputs {
 			value, err := strconv.ParseFloat(line[i], 32)
 			if err != nil {
@@ -70,10 +70,9 @@ func main() {
 			}
 			inputs[i] = float32(value)
 		}
-		outputs[labelMap[line[4]]] = 1
 		data = append(data, TrainingData{
-			Inputs:  inputs,
-			Outputs: outputs,
+			Inputs: inputs,
+			Output: labelMap[line[4]],
 		})
 		line, err = reader.Read()
 	}
@@ -95,8 +94,8 @@ func main() {
 	}
 	fmt.Println(data)
 
-	network := NewNetwork(OptionSigmoid(4), OptionSigmoid(5), OptionSigmoid(3))
-	iterations := network.Train(data, true, 3, .3, .7, 1)
+	network := NewNetwork(OptionNone(4), OptionSigmoid(5), OptionSoftmax(3))
+	iterations := network.Train(data, true, 10, .1, .9, 1)
 	fmt.Println(iterations)
 
 	state, fails := network.NewNetState(), 0
@@ -105,20 +104,13 @@ func main() {
 			state.State[0][i] = Dual{Val: value}
 		}
 		state.Inference()
-		should := 0
-		for i, value := range item.Outputs {
-			if value > 0 {
-				should = i
-				break
-			}
-		}
 		is, max := 0, float32(0.0)
 		for i, value := range state.State[2] {
 			if value.Val > max {
 				is, max = i, value.Val
 			}
 		}
-		if should != is {
+		if item.Output != is {
 			fails++
 		}
 	}

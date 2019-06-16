@@ -20,19 +20,19 @@ func TestDual(t *testing.T) {
 
 func TestNetwork(t *testing.T) {
 	rand.Seed(1)
-	network := NewNetwork(OptionSigmoid(2), OptionSigmoid(2), OptionSigmoid(1))
+	network := NewNetwork(OptionNone(2), OptionSigmoid(2), OptionSigmoid(1))
 	data := []TrainingData{
 		{
-			[]float32{0, 0}, []float32{0},
+			Inputs: []float32{0, 0}, Outputs: []float32{0},
 		},
 		{
-			[]float32{1, 0}, []float32{1},
+			Inputs: []float32{1, 0}, Outputs: []float32{1},
 		},
 		{
-			[]float32{0, 1}, []float32{1},
+			Inputs: []float32{0, 1}, Outputs: []float32{1},
 		},
 		{
-			[]float32{1, 1}, []float32{0},
+			Inputs: []float32{1, 1}, Outputs: []float32{0},
 		},
 	}
 	iterations := network.Train(data, false, .001, .4, .6, 1)
@@ -53,31 +53,31 @@ func TestNetwork(t *testing.T) {
 
 func TestNetworkCCNOT(t *testing.T) {
 	rand.Seed(1)
-	network := NewNetwork(OptionSigmoid(3), OptionSigmoid(3), OptionSigmoid(1))
+	network := NewNetwork(OptionNone(3), OptionSigmoid(3), OptionSigmoid(1))
 	data := []TrainingData{
 		{
-			[]float32{0, 0, 0}, []float32{0},
+			Inputs: []float32{0, 0, 0}, Outputs: []float32{0},
 		},
 		{
-			[]float32{1, 0, 0}, []float32{0},
+			Inputs: []float32{1, 0, 0}, Outputs: []float32{0},
 		},
 		{
-			[]float32{0, 1, 0}, []float32{0},
+			Inputs: []float32{0, 1, 0}, Outputs: []float32{0},
 		},
 		{
-			[]float32{1, 1, 0}, []float32{1},
+			Inputs: []float32{1, 1, 0}, Outputs: []float32{1},
 		},
 		{
-			[]float32{0, 0, 1}, []float32{1},
+			Inputs: []float32{0, 0, 1}, Outputs: []float32{1},
 		},
 		{
-			[]float32{1, 0, 1}, []float32{1},
+			Inputs: []float32{1, 0, 1}, Outputs: []float32{1},
 		},
 		{
-			[]float32{0, 1, 1}, []float32{1},
+			Inputs: []float32{0, 1, 1}, Outputs: []float32{1},
 		},
 		{
-			[]float32{1, 1, 1}, []float32{0},
+			Inputs: []float32{1, 1, 1}, Outputs: []float32{0},
 		},
 	}
 	iterations := network.Train(data, false, .001, .4, .6, 1)

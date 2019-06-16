@@ -32,6 +32,15 @@ func random32(a, b float32) float32 {
 
 type Option func(*Network) error
 
+func OptionNone(size int) Option {
+	return func(network *Network) error {
+		network.Meta = append(network.Meta, Meta{
+			Size: size,
+		})
+		return nil
+	}
+}
+
 func OptionSigmoid(size int) Option {
 	return func(network *Network) error {
 		network.Meta = append(network.Meta, Meta{
@@ -137,6 +146,87 @@ func (n *NetState) Inference() {
 
 type TrainingData struct {
 	Inputs, Outputs []float32
+	Input, Output   int
+}
+
+func (n *NetState) QuadraticCost(item TrainingData) float64 {
+	cost := 0.0
+	for _, layer := range n.Layers {
+		for j := range layer {
+			layer[j].Weight.Der = 1.0
+			n.Inference()
+			var sum Dual
+			for k, output := range item.Outputs {
+				right := Dual{Val: output}
+				if Debug {
+					right.Expr = &Expr{
+						Name: fmt.Sprintf("o%d", k),
+						Val:  &right.Val,
+						Der:  &right.Der,
+					}
+				}
+				sub := Sub(n.State[len(n.State)-1][k], right)
+				sum = Add(sum, Mul(sub, sub))
+			}
+			sum = Mul(Half, sum)
+			layer[j].Weight.Der = 0.0
+			layer[j].Gradient = sum.Der
+			cost = float64(sum.Val)
+		}
+	}
+	for _, bias := range n.Biases {
+		for j := range bias {
+			bias[j].Weight.Der = 1.0
+			n.Inference()
+			var sum Dual
+			for k, output := range item.Outputs {
+				right := Dual{Val: output}
+				if Debug {
+					right.Expr = &Expr{
+						Name: fmt.Sprintf("o%d", k),
+						Val:  &right.Val,
+						Der:  &right.Der,
+					}
+				}
+				sub := Sub(n.State[len(n.State)-1][k], right)
+				sum = Add(sum, Mul(sub, sub))
+			}
+			sum = Mul(Half, sum)
+			bias[j].Weight.Der = 0.0
+			bias[j].Gradient = sum.Der
+			cost = float64(sum.Val)
+		}
+	}
+	return cost
+}
+
+func (n *NetState) CrossEntropyCost(item TrainingData) float64 {
+	cost := 0.0
+	for _, layer := range n.Layers {
+		for j := range layer {
+			layer[j].Weight.Der = 1.0
+			n.Inference()
+			LogTransform(n.State[len(n.State)-1])
+			NegTransform(n.State[len(n.State)-1])
+			loss := n.State[len(n.State)-1][item.Output]
+			layer[j].Weight.Der = 0.0
+			layer[j].Gradient = loss.Der
+			cost = float64(loss.Val)
+		}
+	}
+	for _, bias := range n.Biases {
+		for j := range bias {
+			bias[j].Weight.Der = 1.0
+			n.Inference()
+			LogTransform(n.State[len(n.State)-1])
+			NegTransform(n.State[len(n.State)-1])
+			loss := n.State[len(n.State)-1][item.Output]
+			bias[j].Weight.Der = 0.0
+			bias[j].Gradient = loss.Der
+			cost = float64(loss.Val)
+		}
+	}
+	return cost
 }
 
 func (n *Network) Train(data []TrainingData, verbose bool, target float64, alpha, eta, threshold float32) int {
@@ -151,57 +241,14 @@ func (n *Network) Train(data []TrainingData, verbose bool, target float64, alpha
 
 		total := 0.0
 		for _, item := range randomized {
-			cost := 0.0
 			for j, input := range item.Inputs {
 				state.State[0][j].Val = input
 			}
-			for _, layer := range n.Layers {
-				for j := range layer {
-					layer[j].Weight.Der = 1.0
-					state.Inference()
-					var sum Dual
-					for k, output := range item.Outputs {
-						right := Dual{Val: output}
-						if Debug {
-							right.Expr = &Expr{
-								Name: fmt.Sprintf("o%d", k),
-								Val:  &right.Val,
-								Der:  &right.Der,
-							}
-						}
-						sub := Sub(state.State[len(state.State)-1][k], right)
-						sum = Add(sum, Mul(sub, sub))
-					}
-					sum = Mul(Half, sum)
-					layer[j].Weight.Der = 0.0
-					layer[j].Gradient = sum.Der
-					cost = float64(sum.Val)
-				}
+			if len(item.Outputs) == 0 {
+				total += state.CrossEntropyCost(item)
+			} else {
+				total += state.QuadraticCost(item)
 			}
-			for _, bias := range n.Biases {
-				for j := range bias {
-					bias[j].Weight.Der = 1.0
-					state.Inference()
-					var sum Dual
-					for k, output := range item.Outputs {
-						right := Dual{Val: output}
-						if Debug {
-							right.Expr = &Expr{
-								Name: fmt.Sprintf("o%d", k),
-								Val:  &right.Val,
-								Der:  &right.Der,
-							}
-						}
-						sub := Sub(state.State[len(state.State)-1][k], right)
-						sum = Add(sum, Mul(sub, sub))
-					}
-					sum = Mul(Half, sum)
-					bias[j].Weight.Der = 0.0
-					bias[j].Gradient = sum.Der
-					cost = float64(sum.Val)
-				}
-			}
-			total += cost
 			norm := float32(0)
 			for _, layer := range n.Layers {
 				for j := range layer {

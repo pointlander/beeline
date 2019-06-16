@@ -239,6 +239,23 @@ func Abs(d Dual) Dual {
 	return value
 }
 
+func Neg(d Dual) Dual {
+	if Debug {
+		Check(d)
+	}
+	value := Dual{
+		Val: -d.Val,
+		Der: -d.Der,
+	}
+	if Debug {
+		value.Expr = &Expr{
+			Name:  "-",
+			Exprs: []*Expr{d.Expr},
+		}
+	}
+	return value
+}
+
 func Pow(d Dual, p float32) Dual {
 	if Debug {
 		Check(d)
@@ -274,5 +291,17 @@ func SoftmaxTransform(d []Dual) {
 	}
 	for i, value := range d {
 		d[i] = Div(value, sum)
+	}
+}
+
+func LogTransform(d []Dual) {
+	for i, value := range d {
+		d[i] = Log(value)
+	}
+}
+
+func NegTransform(d []Dual) {
+	for i, value := range d {
+		d[i] = Neg(value)
 	}
 }
