@@ -59,8 +59,6 @@ func Check(d Dual) {
 func (d *Dual) Clip() {
 	if der := float64(d.Der); math.IsNaN(der) || math.IsInf(der, 0) {
 		d.Der = 0
-	} else if der > 256 || der < -256 {
-		d.Der /= 256
 	}
 }
 

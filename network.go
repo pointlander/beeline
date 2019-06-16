@@ -103,7 +103,7 @@ type TrainingData struct {
 	Inputs, Outputs []float32
 }
 
-func (n *Network) Train(data []TrainingData, target float64, alpha, eta float32) int {
+func (n *Network) Train(data []TrainingData, verbose bool, target float64, alpha, eta, threshold float32) int {
 	size := len(data)
 	iterations, state, randomized := 0, n.NewNetState(), make([]TrainingData, size)
 	copy(randomized, data)
@@ -166,22 +166,53 @@ func (n *Network) Train(data []TrainingData, target float64, alpha, eta float32)
 				}
 			}
 			total += cost
+			norm := float32(0)
 			for _, layer := range n.Layers {
 				for j := range layer {
-					layer[j].Delta = alpha*layer[j].Delta - eta*layer[j].Gradient
-					layer[j].Weight.Val += layer[j].Delta
+					value := layer[j].Gradient
+					norm += value * value
 				}
 			}
 			for _, bias := range n.Biases {
 				for j := range bias {
-					bias[j].Delta = alpha*bias[j].Delta - eta*bias[j].Gradient
-					bias[j].Weight.Val += bias[j].Delta
+					value := bias[j].Gradient
+					norm += value * value
 				}
 			}
-			//fmt.Println(i, cost, total)
+			norm = float32(math.Sqrt(float64(norm)))
+			if norm > threshold {
+				scaling := threshold / norm
+				for _, layer := range n.Layers {
+					for j := range layer {
+						layer[j].Delta = alpha*layer[j].Delta - eta*layer[j].Gradient*scaling
+						layer[j].Weight.Val += layer[j].Delta
+					}
+				}
+				for _, bias := range n.Biases {
+					for j := range bias {
+						bias[j].Delta = alpha*bias[j].Delta - eta*bias[j].Gradient*scaling
+						bias[j].Weight.Val += bias[j].Delta
+					}
+				}
+			} else {
+				for _, layer := range n.Layers {
+					for j := range layer {
+						layer[j].Delta = alpha*layer[j].Delta - eta*layer[j].Gradient
+						layer[j].Weight.Val += layer[j].Delta
+					}
+				}
+				for _, bias := range n.Biases {
+					for j := range bias {
+						bias[j].Delta = alpha*bias[j].Delta - eta*bias[j].Gradient
+						bias[j].Weight.Val += bias[j].Delta
+					}
+				}
+			}
 		}
 		iterations++
-		fmt.Println(iterations, total)
+		if verbose {
+			fmt.Println(iterations, total)
+		}
 		if total < target {
 			break
 		}

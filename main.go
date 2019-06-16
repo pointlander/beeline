@@ -42,7 +42,7 @@ func mnist() {
 	trainData := load(train)
 
 	network := NewNetwork(Pixels, Pixels/4, 10)
-	iterations := network.Train(trainData, .001, .4, .6)
+	iterations := network.Train(trainData, true, .001, .4, .6, 1)
 	fmt.Println(iterations)
 
 }
@@ -97,7 +97,7 @@ func main() {
 	fmt.Println(data)
 
 	network := NewNetwork(4, 5, 3)
-	iterations := network.Train(data, 4, .3, .7)
+	iterations := network.Train(data, true, 1, .3, .7, 1)
 	fmt.Println(iterations)
 
 	state, fails := network.NewNetState(), 0
