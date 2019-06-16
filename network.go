@@ -170,12 +170,18 @@ func (n *Network) Train(data []TrainingData, verbose bool, target float64, alpha
 			for _, layer := range n.Layers {
 				for j := range layer {
 					value := layer[j].Gradient
+					if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+						layer[j].Gradient, value = 2*threshold, 2*threshold
+					}
 					norm += value * value
 				}
 			}
 			for _, bias := range n.Biases {
 				for j := range bias {
 					value := bias[j].Gradient
+					if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+						bias[j].Gradient, value = 2*threshold, 2*threshold
+					}
 					norm += value * value
 				}
 			}

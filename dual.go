@@ -53,13 +53,6 @@ func Check(d Dual) {
 	} else if math.IsInf(float64(d.Der), 0) {
 		panic(fmt.Errorf("Der %s isInf", d.Expr))
 	}
-
-}
-
-func (d *Dual) Clip() {
-	if der := float64(d.Der); math.IsNaN(der) || math.IsInf(der, 0) {
-		d.Der = 0
-	}
 }
 
 func Add(u, v Dual) Dual {
@@ -71,7 +64,6 @@ func Add(u, v Dual) Dual {
 		Val: u.Val + v.Val,
 		Der: u.Der + v.Der,
 	}
-	value.Clip()
 	if Debug {
 		value.Expr = &Expr{
 			Name:  "+",
@@ -90,7 +82,6 @@ func Sub(u, v Dual) Dual {
 		Val: u.Val - v.Val,
 		Der: u.Der - v.Der,
 	}
-	value.Clip()
 	if Debug {
 		value.Expr = &Expr{
 			Name:  "-",
@@ -109,7 +100,6 @@ func Mul(u, v Dual) Dual {
 		Val: u.Val * v.Val,
 		Der: u.Der*v.Val + u.Val*v.Der,
 	}
-	value.Clip()
 	if Debug {
 		value.Expr = &Expr{
 			Name:  "*",
@@ -134,7 +124,6 @@ func Div(u, v Dual) Dual {
 		Val: u.Val / v.Val,
 		Der: (u.Der*v.Val - u.Val*v.Der) / (v.Val * v.Val),
 	}
-	value.Clip()
 	if Debug {
 		value.Expr = &Expr{
 			Name:  "/",
@@ -152,7 +141,6 @@ func Sin(d Dual) Dual {
 		Val: float32(math.Sin(float64(d.Val))),
 		Der: d.Der * float32(math.Cos(float64(d.Val))),
 	}
-	value.Clip()
 	if Debug {
 		value.Expr = &Expr{
 			Name:  "sin",
@@ -170,7 +158,6 @@ func Cos(d Dual) Dual {
 		Val: float32(math.Cos(float64(d.Val))),
 		Der: -d.Der * float32(math.Sin(float64(d.Val))),
 	}
-	value.Clip()
 	if Debug {
 		value.Expr = &Expr{
 			Name:  "cos",
@@ -189,7 +176,6 @@ func Exp(d Dual) Dual {
 		Val: exp,
 		Der: d.Der * exp,
 	}
-	value.Clip()
 	if Debug {
 		value.Expr = &Expr{
 			Name:  "exp",
@@ -222,7 +208,6 @@ func Log(d Dual) Dual {
 		Val: float32(math.Log(float64(d.Val))),
 		Der: d.Der / d.Val,
 	}
-	value.Clip()
 	if Debug {
 		value.Expr = &Expr{
 			Name:  "log",
@@ -245,7 +230,6 @@ func Abs(d Dual) Dual {
 		Val: val,
 		Der: d.Der * sign,
 	}
-	value.Clip()
 	if Debug {
 		value.Expr = &Expr{
 			Name:  "abs",
@@ -263,7 +247,6 @@ func Pow(d Dual, p float32) Dual {
 		Val: float32(math.Pow(float64(d.Val), float64(p))),
 		Der: p * d.Der * float32(math.Pow(float64(d.Val), float64(p-1.0))),
 	}
-	value.Clip()
 	if Debug {
 		right := &Expr{Name: fmt.Sprintf("%f", p)}
 		value.Expr = &Expr{
