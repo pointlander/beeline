@@ -100,7 +100,7 @@ func beeline(shared bool, name string) {
 		}
 	}
 
-	network := NewNetwork(OptionNone(4), OptionSigmoid(4), OptionSoftmax(3), OptionShared(shared))
+	network := NewNetwork(OptionNone(4), OptionSigmoid(2), OptionSoftmax(3), OptionShared(shared))
 	epochs := network.Train(data, true, 10, .1, .9, 1)
 	fmt.Println("iterations=", len(epochs))
 
