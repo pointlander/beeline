@@ -272,9 +272,9 @@ func (n *NetState) CrossEntropyCost(item TrainingData) float64 {
 	return cost
 }
 
-func (n *Network) Train(data []TrainingData, verbose bool, target float64, alpha, eta, threshold float32) int {
+func (n *Network) Train(data []TrainingData, verbose bool, target float64, alpha, eta, threshold float32) []float64 {
 	size := len(data)
-	iterations, state, randomized := 0, n.NewNetState(), make([]TrainingData, size)
+	epochs, state, randomized := make([]float64, 0, 8), n.NewNetState(), make([]TrainingData, size)
 	copy(randomized, data)
 	for {
 		for i, sample := range randomized {
@@ -372,7 +372,7 @@ func (n *Network) Train(data []TrainingData, verbose bool, target float64, alpha
 				}
 			}
 		}
-		iterations++
+		epochs = append(epochs, total)
 		if shares, tags := n.Shares, n.Tags; shares != nil {
 			next := make(map[int]int, tags)
 			for i := 0; i < tags; i++ {
@@ -406,15 +406,15 @@ func (n *Network) Train(data []TrainingData, verbose bool, target float64, alpha
 				}
 			}
 			if verbose {
-				fmt.Println(iterations, total, tags)
+				fmt.Println(len(epochs), total, tags)
 			}
 		} else if verbose {
-			fmt.Println(iterations, total)
+			fmt.Println(len(epochs), total)
 		}
 		if total < target {
 			break
 		}
 	}
 
-	return iterations
+	return epochs
 }

@@ -35,8 +35,8 @@ func TestNetwork(t *testing.T) {
 			Inputs: []float32{1, 1}, Outputs: []float32{0},
 		},
 	}
-	iterations := network.Train(data, false, .001, .4, .6, 1)
-	t.Log(iterations)
+	epochs := network.Train(data, false, .001, .4, .6, 1)
+	t.Log(len(epochs))
 	state := network.NewNetState()
 	for _, item := range data {
 		for i, input := range item.Inputs {
@@ -80,8 +80,8 @@ func TestNetworkCCNOT(t *testing.T) {
 			Inputs: []float32{1, 1, 1}, Outputs: []float32{0},
 		},
 	}
-	iterations := network.Train(data, false, .001, .4, .6, 1)
-	t.Log(iterations)
+	epochs := network.Train(data, false, .001, .4, .6, 1)
+	t.Log(epochs)
 	state := network.NewNetState()
 	for _, item := range data {
 		for i, input := range item.Inputs {

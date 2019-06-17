@@ -13,6 +13,10 @@ import (
 	"strconv"
 
 	"github.com/petar/GoMNIST"
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/vg/draw"
 )
 
 const Pixels = GoMNIST.Width * GoMNIST.Height
@@ -43,8 +47,8 @@ func mnist() {
 	trainData := load(train)
 
 	network := NewNetwork(OptionNone(Pixels), OptionSigmoid(Pixels/4), OptionSigmoid(10))
-	iterations := network.Train(trainData, true, .001, .4, .6, 1)
-	fmt.Println(iterations)
+	epochs := network.Train(trainData, true, .001, .4, .6, 1)
+	fmt.Println(len(epochs))
 }
 
 var labelMap = map[string]int{
@@ -53,7 +57,7 @@ var labelMap = map[string]int{
 	"Iris-virginica":  2,
 }
 
-func main() {
+func beeline(shared bool, name string) {
 	rand.Seed(1)
 
 	input, err := os.Open("data/iris.csv")
@@ -95,11 +99,10 @@ func main() {
 			}
 		}
 	}
-	fmt.Println(data)
 
-	network := NewNetwork(OptionNone(4), OptionSigmoid(4), OptionSoftmax(3), OptionShared(true))
-	iterations := network.Train(data, true, 10, .1, .9, 1)
-	fmt.Println(iterations)
+	network := NewNetwork(OptionNone(4), OptionSigmoid(4), OptionSoftmax(3), OptionShared(shared))
+	epochs := network.Train(data, true, 10, .1, .9, 1)
+	fmt.Println("iterations=", len(epochs))
 
 	state, fails := network.NewNetState(), 0
 	for _, item := range data {
@@ -117,5 +120,37 @@ func main() {
 			fails++
 		}
 	}
-	fmt.Println(fails)
+	fmt.Println("fails=", fails)
+
+	points := make(plotter.XYs, 0, len(epochs))
+	for i, epoch := range epochs {
+		points = append(points, plotter.XY{X: float64(i), Y: epoch})
+	}
+
+	p, err := plot.New()
+	if err != nil {
+		panic(err)
+	}
+
+	p.Title.Text = "epochs"
+	p.X.Label.Text = "time"
+	p.Y.Label.Text = "cost"
+
+	scatter, err := plotter.NewScatter(points)
+	if err != nil {
+		panic(err)
+	}
+	scatter.GlyphStyle.Radius = vg.Length(1)
+	scatter.GlyphStyle.Shape = draw.CircleGlyph{}
+	p.Add(scatter)
+
+	err = p.Save(8*vg.Inch, 8*vg.Inch, fmt.Sprintf("epochs_%s.png", name))
+	if err != nil {
+		panic(err)
+	}
+}
+
+func main() {
+	beeline(true, "shared")
+	beeline(false, "normal")
 }
