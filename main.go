@@ -5,29 +5,27 @@
 package main
 
 import (
-	"encoding/csv"
 	"fmt"
 	"math"
 	"math/rand"
-	"os"
-	"strconv"
 
-	"github.com/petar/GoMNIST"
+	"github.com/pointlander/datum/iris"
+	"github.com/pointlander/datum/mnist"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
 	"gonum.org/v1/plot/vg/draw"
 )
 
-const Pixels = GoMNIST.Width * GoMNIST.Height
+const Pixels = mnist.Width * mnist.Height
 
-func mnist() {
-	train, test, err := GoMNIST.Load("./data/")
+func mnistNetwork() {
+	datum, err := mnist.Load()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(len(train.Images), len(test.Images))
-	load := func(set *GoMNIST.Set) []TrainingData {
+	fmt.Println(len(datum.Train.Images), len(datum.Test.Images))
+	load := func(set mnist.Set) []TrainingData {
 		data := make([]TrainingData, len(set.Images))
 		for i, image := range set.Images {
 			inputs, outputs := make([]float32, Pixels), make([]float32, 10)
@@ -44,44 +42,30 @@ func mnist() {
 		}
 		return data
 	}
-	trainData := load(train)
+	trainData := load(datum.Train)
 
 	network := NewNetwork(OptionNone(Pixels), OptionSigmoid(Pixels/4), OptionSigmoid(10))
 	epochs := network.Train(trainData, true, .001, .4, .6, 1)
 	fmt.Println(len(epochs))
 }
 
-var labelMap = map[string]int{
-	"Iris-setosa":     0,
-	"Iris-versicolor": 1,
-	"Iris-virginica":  2,
-}
-
 func beeline(shared bool, name string) {
 	rand.Seed(1)
 
-	input, err := os.Open("data/iris.csv")
+	datum, err := iris.Load()
 	if err != nil {
 		panic(err)
 	}
-	defer input.Close()
-	reader := csv.NewReader(input)
 	data := make([]TrainingData, 0, 256)
-	line, err := reader.Read()
-	for err == nil {
+	for _, line := range datum.Fisher {
 		inputs := make([]float32, 4)
 		for i := range inputs {
-			value, err := strconv.ParseFloat(line[i], 32)
-			if err != nil {
-				panic(err)
-			}
-			inputs[i] = float32(value)
+			inputs[i] = float32(line.Measures[i])
 		}
 		data = append(data, TrainingData{
 			Inputs: inputs,
-			Output: labelMap[line[4]],
+			Output: iris.Labels[line.Label],
 		})
-		line, err = reader.Read()
 	}
 	var maxValues [4]float32
 	for _, item := range data {
